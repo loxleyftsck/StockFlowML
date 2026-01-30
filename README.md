@@ -1,0 +1,354 @@
+# StockFlowML
+
+> **Production-ready MLOps Pipeline** for Stock Trend Prediction using Indonesian Stock Exchange data
+
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## 🎯 Project Overview
+
+StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-standard practices for machine learning in production. The system predicts next-day stock price trends (up/down) using historical OHLCV data and technical indicators.
+
+**Key Principles:**
+- ✅ **Reproducibility**: Every experiment is tracked and reproducible via DVC
+- ✅ **Automation**: Automated weekly retraining via GitHub Actions
+- ✅ **Clean Architecture**: Modular, testable, maintainable code
+- ✅ **Production-Ready**: Built for scalability and monitoring
+
+## 🏗️ Architecture
+
+```mermaid
+graph LR
+    A[Yahoo Finance] -->|yfinance| B[Data Loader]
+    B --> C[Feature Engineering]
+    C --> D[Model Training]
+    D --> E[Evaluation]
+    E --> F[Metrics Report]
+    
+    G[DVC] -.->|Version| B
+    G -.->|Version| C
+    G -.->|Version| D
+    
+    H[GitHub Actions] -.->|Trigger Weekly| D
+    
+    style A fill:#e1f5ff
+    style F fill:#d4edda
+    style G fill:#fff3cd
+    style H fill:#f8d7da
+```
+
+**Pipeline Stages:**
+1. **Data Ingestion**: Download OHLCV data from Yahoo Finance (BBCA.JK default)
+2. **Feature Engineering**: Create returns, rolling averages, and volatility features
+3. **Model Training**: Train Logistic Regression baseline
+4. **Evaluation**: Calculate accuracy, precision, recall, F1-score
+5. **Reporting**: Generate markdown metrics report
+
+## 📊 Features
+
+### Level 1 (Implemented) ✅
+- [x] Automated data fetching from Yahoo Finance
+- [x] Feature engineering with rolling windows
+- [x] Binary classification (price up/down prediction)
+- [x] Logistic Regression baseline model
+- [x] XGBoost support (optional)
+- [x] Comprehensive evaluation metrics
+- [x] DVC for data/model versioning
+- [x] GitHub Actions for weekly retraining
+- [x] Markdown-based experiment logging
+
+### Level 2 (Scaffold) 🔜
+- [ ] Evidently AI for drift detection
+- [ ] Data quality monitoring
+- [ ] Alert system (Discord/Email)
+- [ ] Model performance degradation detection
+
+### Level 3 (Scaffold) 🔮
+- [ ] Feast feature store
+- [ ] FastAPI prediction serving
+- [ ] Real-time inference
+- [ ] Docker deployment
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Git
+- Virtualenv (recommended)
+
+### Installation
+
+```bash
+# Clone repository
+git clone https://github.com/loxleyftsck/StockFlowML.git
+cd StockFlowML
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or
+venv\Scripts\activate  # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Initialize DVC
+dvc init
+```
+
+### Running the Pipeline
+
+**Full pipeline (recommended):**
+```bash
+python -m pipelines.train_pipeline
+```
+
+**Step-by-step:**
+```bash
+# 1. Download data
+python src/data/data_loader.py
+
+# 2. Feature engineering
+python src/features/feature_engineering.py
+
+# 3. Train model
+python src/models/train.py
+
+# 4. Evaluate model
+python src/evaluation/evaluate.py
+```
+
+**With custom ticker:**
+```bash
+python -m pipelines.train_pipeline --ticker TLKM.JK --model logistic
+```
+
+### View Results
+
+After training, check:
+- **Metrics Report**: `reports/metrics.md`
+- **Trained Model**: `models/logistic_model.pkl`
+- **Processed Data**: `data/processed/BBCA.JK_processed.csv`
+
+## 📁 Project Structure
+
+```
+StockFlowML/
+├── .github/
+│   └── workflows/
+│       └── retrain.yml          # Weekly automated retraining
+├── data/
+│   ├── raw/                     # Downloaded stock data (DVC tracked)
+│   └── processed/               # Engineered features (DVC tracked)
+├── models/                      # Trained models (DVC tracked)
+├── reports/
+│   └── metrics.md               # Latest performance metrics
+├── src/
+│   ├── data/
+│   │   └── data_loader.py       # Yahoo Finance data download
+│   ├── features/
+│   │   └── feature_engineering.py  # Rolling windows, returns
+│   ├── models/
+│   │   └── train.py             # Logistic Regression & XGBoost
+│   ├── evaluation/
+│   │   └── evaluate.py          # Metrics calculation & reporting
+│   └── utils/
+│       └── config.py            # Centralized configuration
+├── pipelines/
+│   └── train_pipeline.py        # End-to-end orchestration
+├── dvc.yaml                     # DVC pipeline definition
+├── requirements.txt             # Python dependencies
+└── README.md                    # This file
+```
+
+## 🔬 Model Details
+
+### Input Features
+
+**Price-based:**
+- Daily returns: `(Close[t] - Close[t-1]) / Close[t-1]`
+
+**Rolling Statistics:**
+- Moving averages (5, 10, 20 days)
+- Rolling volatility (std of returns, 5/10/20 days)
+
+**Raw OHLCV:**
+- Open, High, Low, Close, Volume
+
+### Target Variable
+
+**Binary Classification:**
+- `target = 1` if `Close[t+1] > Close[t]` (price goes UP tomorrow)
+- `target = 0` if `Close[t+1] <= Close[t]` (price goes DOWN tomorrow)
+
+### Models
+
+1. **Logistic Regression** (Default)
+   - Baseline linear classifier
+   - Fast training, interpretable
+   - Class-balanced for imbalanced data
+
+2. **XGBoost** (Optional)
+   - Gradient boosting ensemble
+   - Better performance, longer training
+   - Use: `--model xgboost`
+
+### Evaluation Metrics
+
+- **Accuracy**: Overall correctness
+- **Precision**: When predicting UP, how often correct?
+- **Recall**: Of all UP days, how many caught?
+- **F1-Score**: Harmonic mean of precision/recall
+- **Confusion Matrix**: Detailed breakdown
+
+## 🔄 CI/CD Pipeline
+
+### Automated Retraining
+
+**Schedule**: Every Friday at 16:00 WIB (after market close)
+
+**GitHub Actions Workflow:**
+1. Download latest stock data
+2. Run feature engineering
+3. Train model
+4. Evaluate performance
+5. Update `reports/metrics.md`
+6. Auto-commit results
+
+**Manual Trigger:**
+```bash
+# Via GitHub UI: Actions → Weekly Model Retraining → Run workflow
+```
+
+### DVC Workflow
+
+```bash
+# Reproduce entire pipeline
+dvc repro
+
+# Pull data/models from remote
+dvc pull
+
+# Push updated artifacts
+dvc push
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=src --cov-report=html
+
+# View coverage report
+open htmlcov/index.html
+```
+
+## 📈 Performance Expectations
+
+**Baseline Performance (BBCA.JK, 5 years):**
+- Training Accuracy: ~52-55%
+- Test Accuracy: ~50-53%
+
+> **Note**: Stock prediction is inherently difficult. Accuracy >50% is better than random. Focus is on MLOps practices, not achieving high accuracy.
+
+## 🛠️ Development
+
+### Adding New Features
+
+1. Edit `src/features/feature_engineering.py`
+2. Add new feature calculation methods
+3. Update `create_all_features()`
+4. Re-run pipeline
+
+### Using Different Stocks
+
+```bash
+# Indonesian stocks (IDX)
+python -m pipelines.train_pipeline --ticker TLKM.JK  # Telkom
+python -m pipelines.train_pipeline --ticker BMRI.JK  # Bank Mandiri
+
+# US stocks
+python -m pipelines.train_pipeline --ticker AAPL  # Apple
+```
+
+### Hyperparameter Tuning
+
+Edit model parameters in `src/models/train.py`:
+
+```python
+# Logistic Regression
+LogisticRegression(
+    C=1.0,  # Regularization strength
+    max_iter=1000,
+    solver='lbfgs'
+)
+
+# XGBoost
+XGBClassifier(
+    n_estimators=100,  # Number of trees
+    max_depth=5,       # Tree depth
+    learning_rate=0.1
+)
+```
+
+## 📚 MLOps Concepts Demonstrated
+
+| Concept | Implementation |
+|---------|----------------|
+| **Data Versioning** | DVC tracks raw data, processed features, models |
+| **Reproducibility** | `dvc.yaml` defines exact pipeline stages |
+| **Automation** | GitHub Actions for scheduled retraining |
+| **Experiment Tracking** | Markdown metrics logged with each run |
+| **Clean Architecture** | Modular separation (data/features/models/eval) |
+| **Configuration Management** | Centralized `config.py` |
+| **Temporal Validation** | Train/test split preserves time order |
+
+## 🗺️ Roadmap
+
+### Level 2: Monitoring (Next)
+- [ ] Integrate Evidently AI for data drift detection
+- [ ] Automated monitoring reports
+- [ ] Alert system (Discord webhooks)
+- [ ] Deployment gating based on drift score
+
+### Level 3: Production Serving (Future)
+- [ ] Feast feature store for low-latency features
+- [ ] FastAPI REST API for predictions
+- [ ] Redis online feature cache
+- [ ] Docker + docker-compose deployment
+- [ ] Kubernetes manifests
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Yahoo Finance** for providing free stock data via yfinance
+- **DVC.org** for data version control tools
+- **Evidently AI** for drift detection framework
+- **Feast** for feature store architecture
+
+## 📧 Contact
+
+For questions or suggestions, please open an issue on GitHub.
+
+---
+
+**Built with ❤️ for demonstrating MLOps best practices**
+
+*Last updated: 2026-01-30*

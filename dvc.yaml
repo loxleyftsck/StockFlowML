@@ -1,0 +1,32 @@
+# DVC Pipeline Configuration
+# Defines reproducible data and model pipeline stages
+
+stages:
+  download_data:
+    cmd: python src/data/data_loader.py
+    deps:
+      - src/data/data_loader.py
+      - src/utils/config.py
+    outs:
+      - data/raw/${DEFAULT_TICKER:-BBCA.JK}_raw.csv
+
+  feature_engineering:
+    cmd: python src/features/feature_engineering.py
+    deps:
+      - src/features/feature_engineering.py
+      - src/utils/config.py
+      - data/raw/${DEFAULT_TICKER:-BBCA.JK}_raw.csv
+    outs:
+      - data/processed/${DEFAULT_TICKER:-BBCA.JK}_processed.csv
+
+  train_model:
+    cmd: python -m pipelines.train_pipeline --model logistic
+    deps:
+      - src/models/train.py
+      - src/evaluation/evaluate.py
+      - data/processed/${DEFAULT_TICKER:-BBCA.JK}_processed.csv
+    outs:
+      - models/logistic_model.pkl
+    metrics:
+      - reports/metrics.md:
+          cache: false

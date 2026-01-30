@@ -1,0 +1,66 @@
+name: Weekly Model Retraining
+
+on:
+  schedule:
+    # Run every Friday at 16:00 WIB (09:00 UTC)
+    - cron: '0 9 * * 5'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for DVC
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Initialize DVC
+        run: |
+          dvc remote add -d local_remote .dvc/cache
+          dvc config core.autostage true
+      
+      - name: Run training pipeline
+        run: |
+          echo "Starting training pipeline..."
+          python -m pipelines.train_pipeline --model logistic
+      
+      - name: Show metrics
+        if: success()
+        run: |
+          echo "Training complete. Metrics:"
+          cat reports/metrics.md
+      
+      - name: Commit results
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add reports/metrics.md
+          git add models/.gitignore
+          git add data/raw/.gitignore
+          git add data/processed/.gitignore
+          git commit -m "🤖 Auto-retrain: $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
+          git push || echo "No changes to push"
+      
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: training-artifacts
+          path: |
+            reports/metrics.md
+            models/*.pkl
+          retention-days: 30

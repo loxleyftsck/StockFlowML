@@ -1,0 +1,19 @@
+# DVC ignore patterns
+# Add patterns to exclude files/directories from DVC tracking
+
+# Python
+__pycache__
+*.py[cod]
+.pytest_cache
+
+# IDE
+.vscode
+.idea
+
+# Temporary files
+*.tmp
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

@@ -33,6 +33,10 @@ class Config:
     LOOKBACK_YEARS = 5
     TRAIN_TEST_SPLIT = 0.8
     
+    # Data fallback settings
+    USE_FALLBACK = True  # Enable CSV fallback if Yahoo Finance fails
+    FALLBACK_DATA_DIR = DATA_DIR / "fallback"
+    
     # Feature engineering
     ROLLING_WINDOWS = [5, 10, 20]
     
@@ -52,6 +56,7 @@ class Config:
             cls.PROCESSED_DATA_DIR,
             cls.MODELS_DIR,
             cls.REPORTS_DIR,
+            cls.FALLBACK_DATA_DIR,
         ]
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
@@ -75,6 +80,13 @@ class Config:
     def get_metrics_path(cls) -> Path:
         """Get path for metrics report."""
         return cls.REPORTS_DIR / "metrics.md"
+    
+    @classmethod
+    def get_fallback_data_path(cls, ticker: str) -> Path:
+        """Get path for fallback CSV snapshot."""
+        # Replace dots with underscores for filename safety
+        safe_ticker = ticker.replace('.', '_')
+        return cls.FALLBACK_DATA_DIR / f"{safe_ticker}_snapshot.csv"
 
 
 # Ensure directories exist on import

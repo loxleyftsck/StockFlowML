@@ -158,9 +158,101 @@ StockFlowML/
 ├── pipelines/
 │   └── train_pipeline.py        # End-to-end orchestration
 ├── dvc.yaml                     # DVC pipeline definition
+├── tests/
+│   └── test_pipeline.py         # Integration tests
 ├── requirements.txt             # Python dependencies
 └── README.md                    # This file
 ```
+
+---
+
+## 🔒 Data Contract & Quality
+
+> **Production Rule**: No model training occurs unless data passes all validation checks.
+
+### Why Data Quality Matters in Finance
+
+Financial time-series data requires rigorous validation because:
+- **Market integrity**: Invalid OHLC relationships indicate data corruption
+- **Model reliability**: Garbage in = garbage out - invalid data destroys model performance
+- **Regulatory compliance**: Financial systems require auditable data provenance
+- **Risk management**: Silent data errors can lead to catastrophic trading decisions
+
+### Data Contract Specification
+
+All data (Yahoo Finance or CSV snapshots) MUST conform to this contract:
+
+#### 1. Schema Requirements
+- **Columns**: Date, Open, High, Low, Close, Volume (exact names)
+- **Types**:
+  - Date: datetime64
+  - OHLC: float64
+  - Volume: int64
+
+#### 2. Time Properties
+- **Frequency**: Daily (one row per trading day)
+- **Trading days**: Weekdays only (no weekends)
+- **Sorted**: Ascending chronological order
+- **Unique**: No duplicate timestamps
+
+#### 3. Financial Validity
+- **Positive prices**: Open, High, Low, Close > 0
+- **Non-negative volume**: Volume >= 0
+- **OHLC relationships**:
+  - Low <= Open <= High
+  - Low <= Close <= High
+  - High >= Low
+
+#### 4. Data Integrity
+- **No missing values**: OHLCV columns must be complete
+- **No forward-filling**: Missing days are dropped (not filled)
+- **No future leakage**: Target generation validated
+
+### Validation Process
+
+```python
+# Data is automatically validated during loading
+from src.data.data_loader import StockDataLoader
+from src.data.data_validation import validate_dataframe
+
+loader = StockDataLoader("BBCA.JK")
+df = loader.download_data()
+df = loader.clean_data(validate=True)  # Explicit validation
+
+# Check validation stats
+print(loader.validation_stats)
+```
+
+**Validation Checks**:
+1. Schema validation (columns, types)
+2. Time properties (sorted, no duplicates)
+3. Financial integrity (OHLC relationships, positive prices)
+4. Missing data detection (no NaNs in OHLCV)
+
+### Data Quality Report
+
+Generate data quality report:
+
+```bash
+python scripts/generate_data_quality_report.py --ticker BBCA.JK
+```
+
+View report at: `reports/data_quality_report.md`
+
+### Validation Failures
+
+All validation failures raise `DataValidationError` with actionable messages:
+
+```
+DataValidationError: Financial integrity validation failed for BBCA.JK:
+Removed 15 invalid rows (15.0%). Threshold: 10%.
+Invalid row breakdown: {'high_less_than_low': 8, 'negative_prices': 7}.
+Action: Investigate data source quality.
+```
+
+**No silent fixes.** All data cleaning is logged and auditable.
+
+---
 
 ## 🔬 Model Details
 

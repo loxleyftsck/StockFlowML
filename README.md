@@ -17,9 +17,17 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 
 ## 🏗️ Architecture
 
-![StockFlowML Pipeline Architecture](docs/images/architecture.png)
+### MLOps Workflow
 
-*Professional MLOps pipeline with automated data versioning (DVC) and weekly retraining (GitHub Actions)*
+![StockFlowML MLOps Workflow](docs/images/mlops_workflow.png)
+
+*Complete MLOps workflow with Git branching strategy, CI/CD pipeline, and automated monitoring*
+
+### Development Workflow
+
+- **main branch**: Production-ready models with validated performance
+- **development branch**: Experimentation and feature updates  
+- **CI Quality Gate**: Automated checks before merge (tests, metrics thresholds, drift detection)
 
 **Pipeline Stages:**
 1. **Data Ingestion**: Download OHLCV data from Yahoo Finance (BBCA.JK default)
@@ -27,6 +35,11 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 3. **Model Training**: Train Logistic Regression baseline
 4. **Evaluation**: Calculate accuracy, precision, recall, F1-score
 5. **Reporting**: Generate markdown metrics report
+
+**MLOps Components:**
+- **DVC**: Version control for data and models
+- **GitHub Actions**: Weekly automated retraining + CI validation
+- **Monitoring**: Drift detection and performance tracking
 
 ## 📊 Features
 
@@ -47,11 +60,19 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 - [x] Markdown-based experiment logging
 - [x] Production-grade testing suite
 
-### Level 2 (Scaffold) 🔜
-- [ ] Evidently AI for drift detection
-- [ ] Data quality monitoring
-- [ ] Alert system (Discord/Email)
-- [ ] Model performance degradation detection
+### Level 2 (Implemented) ✅
+- [x] **Evidently AI for drift detection**
+  - [x] Data drift detection (feature distribution changes)
+  - [x] Target drift detection (label distribution changes)
+  - [x] HTML/JSON/Markdown drift reports
+  - [x] CLI drift report generator
+- [x] **Alert System**
+  - [x] Discord webhook integration
+  - [x] Drift detection alerts
+  - [x] Performance degradation alerts
+  - [x] Training completion notifications
+- [x] **Data quality monitoring** (integrated with Level 1)
+- [x] **Threshold-based alerting**
 
 ### Level 3 (Scaffold) 🔮
 - [ ] Feast feature store
@@ -123,6 +144,45 @@ After training, check:
 - **Trained Model**: `models/logistic_model.pkl`
 - **Processed Data**: `data/processed/BBCA.JK_processed.csv`
 
+### Level 2: Monitoring & Drift Detection
+
+**Detect data drift:**
+```bash
+# Auto-split mode (uses 70% as reference, 30% as current)
+python scripts/generate_drift_report.py --ticker BBCA.JK --split 0.7
+
+# Explicit mode (compare two datasets)
+python scripts/generate_drift_report.py \
+  --reference data/processed/BBCA.JK_baseline.csv \
+  --current data/processed/BBCA.JK_today.csv
+```
+
+**View drift reports:**
+- **Interactive HTML**: `reports/drift_report.html` (Evidently AI visualization)
+- **Programmatic JSON**: `reports/drift_report.json` (for automation)
+- **Executive Summary**: `reports/drift_report.md` (markdown summary)
+
+**Send Discord alerts** (requires `DISCORD_WEBHOOK_URL` env var):
+```bash
+# Set webhook URL
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/YOUR_WEBHOOK_HERE"
+
+# Generate report with alerts
+python scripts/generate_drift_report.py --ticker BBCA.JK --send-alert
+```
+
+**Test alert system:**
+```bash
+python -m src.monitoring.alerts
+```
+
+**What drift detection monitors:**
+- Feature distribution changes (data drift)
+- Target label distribution changes (target drift)
+- Threshold-based alerting (50% feature drift or 0.3 target drift score)
+- Automatic recommendations for retraining
+
+
 ## 📁 Project Structure
 
 ```plaintext
@@ -138,10 +198,14 @@ StockFlowML/
 ├── reports/
 │   ├── metrics.md               # Training performance metrics
 │   ├── data_quality_report.md   # Data validation results
-│   └── data_feasibility.md      # Production readiness assessment
+│   ├── data_feasibility.md      # Production readiness assessment
+│   ├── drift_report.html        # Interactive drift visualization (Level 2)
+│   ├── drift_report.json        # Drift metrics for automation (Level 2)
+│   └── drift_report.md          # Drift summary report (Level 2)
 ├── scripts/
 │   ├── generate_data_quality_report.py    # Data validation report
 │   ├── generate_feasibility_report.py     # Feasibility assessment
+│   ├── generate_drift_report.py           # Drift detection report (Level 2)
 │   ├── generate_fallback_data.py          # Create CSV snapshots
 │   └── generate_synthetic_data.py         # Demo data generator
 ├── src/
@@ -155,7 +219,10 @@ StockFlowML/
 │   │   └── train.py             # Logistic Regression & XGBoost
 │   ├── evaluation/
 │   │   └── evaluate.py          # Metrics calculation & reporting
-│   ├── monitoring/              # Drift detection (Level 2)
+│   ├── monitoring/              # Level 2: Monitoring & Drift Detection
+│   │   ├── drift_detector.py    # Evidently AI drift detection
+│   │   ├── alerts.py            # Discord/Email alert system
+│   │   └── __init__.py          # Monitoring module exports
 │   ├── api/                     # FastAPI serving (Level 3)
 │   └── utils/
 │       └── config.py            # Centralized configuration

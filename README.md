@@ -74,9 +74,12 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 - [x] **Data quality monitoring** (integrated with Level 1)
 - [x] **Threshold-based alerting**
 
-### Level 3 (Scaffold) 🔮
+### Level 3 (In Progress) 🚧
+- [x] **FastAPI prediction serving**
+  - [x] Health check & inference endpoints
+  - [x] Pydantic schema validation
+  - [x] Model hot-loading
 - [ ] Feast feature store
-- [ ] FastAPI prediction serving
 - [ ] Real-time inference
 - [ ] Docker deployment
 
@@ -174,6 +177,41 @@ python scripts/generate_drift_report.py --ticker BBCA.JK --send-alert
 **Test alert system:**
 ```bash
 python -m src.monitoring.alerts
+```
+
+### Level 3: FastAPI Serving
+
+**Start the API Server:**
+```bash
+# Start server with auto-reload (dev)
+python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**API Endpoints:**
+- **Health Check**: `GET /health` - Check API and model status
+- **Predict**: `POST /predict` - Get model prediction
+
+**Example Prediction Request:**
+```json
+{
+  "Open": 4500.0,
+  "High": 4550.0,
+  "Low": 4480.0,
+  "Close": 4520.0,
+  "Volume": 10000000.0,
+  "returns": 0.005,
+  "ma_5": 4480.0,
+  "ma_10": 4470.0,
+  "ma_20": 4450.0,
+  "volatility_5": 0.012,
+  "volatility_10": 0.013,
+  "volatility_20": 0.015
+}
+```
+
+**Test Integration:**
+```bash
+python tests/test_api_integration.py
 ```
 
 **What drift detection monitors:**

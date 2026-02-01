@@ -16,7 +16,7 @@ dvc==3.37.0
 mlflow==2.9.2
 
 # Monitoring (Level 2 scaffold)
-evidently==0.4.11
+evidently>=0.4.33,<0.5.0  # Drift detection - tested with 0.4.40
 
 # Feature Store (Level 3 scaffold)
 feast==0.35.0

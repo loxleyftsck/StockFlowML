@@ -48,6 +48,11 @@ graph LR
 
 ### Level 1 (Implemented) ✅
 - [x] Automated data fetching from Yahoo Finance
+- [x] **Data Quality Framework**:
+  - [x] Comprehensive data validation (schema, financial integrity, temporal checks)
+  - [x] Data feasibility assessment (6 production-ready criteria)
+  - [x] Automated quality reporting (`data_quality_report.md`, `data_feasibility.md`)
+  - [x] CSV fallback for offline/demo use
 - [x] Feature engineering with rolling windows
 - [x] Binary classification (price up/down prediction)
 - [x] Logistic Regression baseline model
@@ -56,6 +61,7 @@ graph LR
 - [x] DVC for data/model versioning
 - [x] GitHub Actions for weekly retraining
 - [x] Markdown-based experiment logging
+- [x] Production-grade testing suite
 
 ### Level 2 (Scaffold) 🔜
 - [ ] Evidently AI for drift detection
@@ -127,40 +133,57 @@ python -m pipelines.train_pipeline --ticker TLKM.JK --model logistic
 ### View Results
 
 After training, check:
-- **Metrics Report**: `reports/metrics.md`
+- **Model Metrics**: `reports/metrics.md` (training performance)
+- **Data Quality Report**: `reports/data_quality_report.md` (validation results)
+- **Data Feasibility Report**: `reports/data_feasibility.md` (production readiness)
 - **Trained Model**: `models/logistic_model.pkl`
 - **Processed Data**: `data/processed/BBCA.JK_processed.csv`
 
 ## 📁 Project Structure
 
-```
+```plaintext
 StockFlowML/
 ├── .github/
 │   └── workflows/
 │       └── retrain.yml          # Weekly automated retraining
 ├── data/
 │   ├── raw/                     # Downloaded stock data (DVC tracked)
-│   └── processed/               # Engineered features (DVC tracked)
+│   ├── processed/               # Engineered features (DVC tracked)
+│   └── fallback/                # CSV snapshots for offline/demo use
 ├── models/                      # Trained models (DVC tracked)
 ├── reports/
-│   └── metrics.md               # Latest performance metrics
+│   ├── metrics.md               # Training performance metrics
+│   ├── data_quality_report.md   # Data validation results
+│   └── data_feasibility.md      # Production readiness assessment
+├── scripts/
+│   ├── generate_data_quality_report.py    # Data validation report
+│   ├── generate_feasibility_report.py     # Feasibility assessment
+│   ├── generate_fallback_data.py          # Create CSV snapshots
+│   └── generate_synthetic_data.py         # Demo data generator
 ├── src/
 │   ├── data/
-│   │   └── data_loader.py       # Yahoo Finance data download
+│   │   ├── data_loader.py       # Yahoo Finance data download
+│   │   ├── data_validation.py   # Data contract validation
+│   │   └── data_feasibility.py  # Production readiness checks
 │   ├── features/
 │   │   └── feature_engineering.py  # Rolling windows, returns
 │   ├── models/
 │   │   └── train.py             # Logistic Regression & XGBoost
 │   ├── evaluation/
 │   │   └── evaluate.py          # Metrics calculation & reporting
+│   ├── monitoring/              # Drift detection (Level 2)
+│   ├── api/                     # FastAPI serving (Level 3)
 │   └── utils/
 │       └── config.py            # Centralized configuration
 ├── pipelines/
 │   └── train_pipeline.py        # End-to-end orchestration
-├── dvc.yaml                     # DVC pipeline definition
 ├── tests/
-│   └── test_pipeline.py         # Integration tests
+│   ├── test_pipeline.py         # Integration tests
+│   ├── test_data_validation.py  # Data contract tests
+│   └── test_data_feasibility.py # Feasibility criteria tests
+├── dvc.yaml                     # DVC pipeline definition
 ├── requirements.txt             # Python dependencies
+├── requirements-dev.txt         # Development dependencies
 └── README.md                    # This file
 ```
 
@@ -251,6 +274,60 @@ Action: Investigate data source quality.
 ```
 
 **No silent fixes.** All data cleaning is logged and auditable.
+
+### Data Feasibility Assessment
+
+Beyond basic validation, StockFlowML includes **production readiness checks**:
+
+```bash
+python scripts/generate_feasibility_report.py --ticker BBCA.JK
+```
+
+**6 Production-Ready Criteria**:
+1. ✅ **Minimum Samples**: >= 100 trading days for statistical validity
+2. ✅ **Data Completeness**: >= 90% of OHLCV data present
+3. ✅ **Temporal Continuity**: No gaps > 10 trading days
+4. ✅ **Outlier Detection**: < 1% extreme outliers (Z-score > 4.0)
+5. ✅ **Label Balance**: Minority class between 20-80%
+6. ✅ **Look-Ahead Bias**: No features with future information
+
+View report at: `reports/data_feasibility.md`
+
+## 🛠️ Utility Scripts
+
+StockFlowML includes production-ready scripts for data management and reporting:
+
+### Data Quality & Validation
+
+```bash
+# Generate comprehensive data quality report
+python scripts/generate_data_quality_report.py --ticker BBCA.JK
+
+# Generate production feasibility assessment
+python scripts/generate_feasibility_report.py --ticker DEMO
+
+# Validate real Yahoo Finance data (detailed analysis)
+python scripts/generate_model_validation_report.py
+```
+
+### Data Management
+
+```bash
+# Create CSV snapshot for offline use
+python scripts/generate_fallback_data.py --ticker BBCA.JK --days 180
+
+# Generate synthetic OHLCV data for demos
+python scripts/generate_synthetic_data.py --ticker DEMO --days 500
+
+# Check snapshot freshness
+python scripts/check_snapshot.py
+```
+
+**All scripts support**:
+- Multiple ticker symbols
+- Configurable parameters
+- Markdown report generation
+- Error handling with clear messages
 
 ---
 
@@ -443,4 +520,4 @@ For questions or suggestions, please open an issue on GitHub.
 
 **Built with ❤️ for demonstrating MLOps best practices**
 
-*Last updated: 2026-01-30*
+*Last updated: 2026-02-01*

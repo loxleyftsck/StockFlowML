@@ -19,6 +19,7 @@ import os
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.monitoring.drift_detector import DriftDetector
+from src.monitoring.alerts import AlertSystem
 from datetime import datetime
 
 
@@ -111,7 +112,7 @@ def generate_report(
     print(f"[DONE] Drift detection complete!")
     print(f"{'='*60}\n")
     
-    return has_drift
+    return has_drift, summary
 
 
 def generate_markdown_report(
@@ -283,6 +284,11 @@ def main():
         default="target",
         help="Name of target column"
     )
+    parser.add_argument(
+        "--send-alert",
+        action="store_true",
+        help="Send Discord alert if drift detected (requires DISCORD_WEBHOOK_URL env var)"
+    )
     
     args = parser.parse_args()
     
@@ -317,12 +323,22 @@ def main():
         print(f"   Split: {len(reference_df)} reference / {len(current_df)} current")
     
     # Generate report
-    has_drift = generate_report(
+    has_drift, summary = generate_report(
         reference_path=reference_path,
         current_path=current_path,
         output_dir=args.output_dir,
         target_column=args.target_column
     )
+    
+    # Send alert if enabled
+    if args.send_alert and has_drift:
+        alert_system = AlertSystem()
+        print("\n[ALERT] Sending Discord notification...")
+        alert_system.send_drift_alert(
+            ticker=args.ticker if not args.reference else "Stock",
+            drift_summary=summary,
+            report_path=args.output_dir / "drift_report.html"
+        )
     
     # Exit code for CI/CD
     sys.exit(1 if has_drift else 0)

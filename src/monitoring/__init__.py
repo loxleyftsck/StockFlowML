@@ -9,8 +9,11 @@ This module provides production-grade monitoring capabilities including:
 """
 
 from .drift_detector import DriftDetector, load_and_compare
+from .alerts import AlertSystem, send_drift_alert
 
 __all__ = [
     "DriftDetector",
     "load_and_compare",
+    "AlertSystem",
+    "send_drift_alert",
 ]

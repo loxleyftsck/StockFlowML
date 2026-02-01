@@ -17,25 +17,9 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 
 ## 🏗️ Architecture
 
-```mermaid
-graph LR
-    A[Yahoo Finance] -->|yfinance| B[Data Loader]
-    B --> C[Feature Engineering]
-    C --> D[Model Training]
-    D --> E[Evaluation]
-    E --> F[Metrics Report]
-    
-    G[DVC] -.->|Version| B
-    G -.->|Version| C
-    G -.->|Version| D
-    
-    H[GitHub Actions] -.->|Trigger Weekly| D
-    
-    style A fill:#e1f5ff
-    style F fill:#d4edda
-    style G fill:#fff3cd
-    style H fill:#f8d7da
-```
+![StockFlowML Pipeline Architecture](docs/images/architecture.png)
+
+*Professional MLOps pipeline with automated data versioning (DVC) and weekly retraining (GitHub Actions)*
 
 **Pipeline Stages:**
 1. **Data Ingestion**: Download OHLCV data from Yahoo Finance (BBCA.JK default)

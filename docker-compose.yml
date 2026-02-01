@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: stockflowml-api:latest
+    container_name: stockflowml_api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount models volume for hot-reloading models without rebuilding
+      - ./models:/app/models
+      # Mount logs
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Placeholder for future services
+  # drift_monitor:
+  #   ...
+  # redis_feature_store:
+  #   ...

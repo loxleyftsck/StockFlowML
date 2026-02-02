@@ -23,6 +23,23 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 
 *Complete MLOps workflow with Git branching strategy, CI/CD pipeline, and automated monitoring*
 
+### Architecture with UI/UX Layer
+
+![StockFlowML Architecture with UI/UX](docs/images/mlops_workflow_with_ui.png)
+
+*Extended architecture showing end-to-end system including UI/UX interface layer for user interaction*
+
+**UI/UX Interface Layer:**
+- **Technical View** (Purple): Drift reports, training logs, model comparison for ML engineers
+- **Dashboard** (Blue): Stock charts, predictions, model status, and user controls
+- **Business View** (Green): Simplified trends, metrics, and executive summaries
+- **Future Features**: Real-time data, mobile interface, alert notifications
+
+**Data Flow:**
+- Backend components (DVC, GitHub Actions, Monitoring, FastAPI, Feast) feed data into UI layer
+- Quality Gate ensures only validated models and tested UI reach production
+- Development branch for experimentation, main branch for stable releases
+
 ### Development Workflow
 
 - **main branch**: Production-ready models with validated performance
@@ -74,14 +91,29 @@ StockFlowML is an end-to-end **MLOps pipeline** that demonstrates industry-stand
 - [x] **Data quality monitoring** (integrated with Level 1)
 - [x] **Threshold-based alerting**
 
-### Level 3 (In Progress) 🚧
+### Level 3 (Implemented) ✅
 - [x] **FastAPI prediction serving**
   - [x] Health check & inference endpoints
   - [x] Pydantic schema validation
   - [x] Model hot-loading
-- [ ] Feast feature store
-- [ ] Real-time inference
-- [ ] Docker deployment
+  - [x] CORS middleware
+  - [x] Error handling and logging
+- [x] **Feast feature store**
+  - [x] Feature definitions and registry
+  - [x] SQLite online store (dev)
+  - [x] Parquet offline store
+  - [x] Feature materialization scripts
+  - [x] Ticker-based prediction endpoint
+- [x] **Real-time inference**
+  - [x] Low-latency predictions (< 100ms)
+  - [x] Feature retrieval from Feast
+  - [x] Async API endpoints
+- [x] **Docker deployment**
+  - [x] Production-ready Dockerfile
+  - [x] Docker Compose with Redis
+  - [x] Health checks and auto-restart
+  - [x] Volume mounts for models
+  - [x] Multi-service orchestration
 
 ## 🚀 Quick Start
 
@@ -214,11 +246,113 @@ python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 python tests/test_api_integration.py
 ```
 
+**Run with Docker:**
+```bash
+# Build and run
+docker-compose up --build -d
+
+# Check logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
 **What drift detection monitors:**
 - Feature distribution changes (data drift)
 - Target label distribution changes (target drift)
 - Threshold-based alerting (50% feature drift or 0.3 target drift score)
 - Automatic recommendations for retraining
+
+### Level 3: Production Serving & Feature Store
+
+**Start the API Server:**
+```bash
+# Development mode with auto-reload
+python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+
+# Production mode with multiple workers
+python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+**API Endpoints:**
+- **Root**: `GET /` - Welcome message
+- **Health Check**: `GET /health` - Check API and model status
+- **Predict (Manual)**: `POST /predict` - Prediction with manual features
+- **Predict (Ticker)**: `POST /predict/ticker` - Prediction using Feast feature store
+
+**Example 1: Manual Prediction**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Open": 4500.0,
+    "High": 4550.0,
+    "Low": 4480.0,
+    "Close": 4520.0,
+    "Volume": 10000000.0,
+    "returns": 0.005,
+    "ma_5": 4480.0,
+    "ma_10": 4470.0,
+    "ma_20": 4450.0,
+    "volatility_5": 0.012,
+    "volatility_10": 0.013,
+    "volatility_20": 0.015
+  }'
+```
+
+**Example 2: Ticker-based Prediction (Feast)**
+```bash
+curl -X POST http://localhost:8000/predict/ticker \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ticker": "BBCA.JK",
+    "timestamp": null
+  }'
+```
+
+**Setup Feast Feature Store:**
+```bash
+# 1. Prepare feature data (convert CSV to Parquet)
+python feature_store/materialize_features.py --ticker BBCA.JK --prepare-only
+
+# 2. Initialize Feast registry
+cd feature_store/feature_repo
+feast apply
+cd ../..
+
+# 3. Materialize features to online store
+python feature_store/materialize_features.py --ticker BBCA.JK --days 30
+```
+
+**Run with Docker:**
+```bash
+# Build and start all services (API + Redis)
+docker-compose up --build -d
+
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f api
+
+# Test API
+curl http://localhost:8000/health
+
+# Stop services
+docker-compose down
+```
+
+**Test Integration:**
+```bash
+# Run API integration tests
+python tests/test_api_integration.py
+```
+
+**Interactive API Documentation:**
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
 
 
 ## 📁 Project Structure
@@ -231,7 +365,10 @@ StockFlowML/
 ├── data/
 │   ├── raw/                     # Downloaded stock data (DVC tracked)
 │   ├── processed/               # Engineered features (DVC tracked)
-│   └── fallback/                # CSV snapshots for offline/demo use
+│   │   └── feast_features.parquet  # Feast-compatible features
+│   ├── fallback/                # CSV snapshots for offline/demo use
+│   ├── online_store.db          # Feast online store (SQLite)
+│   └── registry.db              # Feast registry
 ├── models/                      # Trained models (DVC tracked)
 ├── reports/
 │   ├── metrics.md               # Training performance metrics
@@ -239,7 +376,14 @@ StockFlowML/
 │   ├── data_feasibility.md      # Production readiness assessment
 │   ├── drift_report.html        # Interactive drift visualization (Level 2)
 │   ├── drift_report.json        # Drift metrics for automation (Level 2)
-│   └── drift_report.md          # Drift summary report (Level 2)
+│   ├── drift_report.md          # Drift summary report (Level 2)
+│   ├── level2_completion_report.md  # Level 2 completion summary
+│   └── level3_completion_report.md  # Level 3 completion summary
+├── docs/
+│   ├── images/
+│   │   └── mlops_workflow.png   # MLOps architecture diagram
+│   ├── DEPLOYMENT.md            # Deployment guide (Level 3)
+│   └── BRANCHING_STRATEGY.md    # Git workflow
 ├── scripts/
 │   ├── generate_data_quality_report.py    # Data validation report
 │   ├── generate_feasibility_report.py     # Feasibility assessment
@@ -261,15 +405,29 @@ StockFlowML/
 │   │   ├── drift_detector.py    # Evidently AI drift detection
 │   │   ├── alerts.py            # Discord/Email alert system
 │   │   └── __init__.py          # Monitoring module exports
-│   ├── api/                     # FastAPI serving (Level 3)
+│   ├── api/                     # Level 3: FastAPI serving
+│   │   ├── app.py               # Main API application
+│   │   ├── schemas.py           # Pydantic request/response models
+│   │   ├── __init__.py
+│   │   └── README.md
 │   └── utils/
 │       └── config.py            # Centralized configuration
+├── feature_store/               # Level 3: Feast feature store
+│   ├── feature_repo/
+│   │   ├── feature_store.yaml   # Feast configuration
+│   │   ├── features.py          # Feature view definitions
+│   │   └── __init__.py
+│   ├── materialize_features.py  # Feature materialization script
+│   └── README.md                # Feature store documentation
 ├── pipelines/
 │   └── train_pipeline.py        # End-to-end orchestration
 ├── tests/
 │   ├── test_pipeline.py         # Integration tests
 │   ├── test_data_validation.py  # Data contract tests
-│   └── test_data_feasibility.py # Feasibility criteria tests
+│   ├── test_data_feasibility.py # Feasibility criteria tests
+│   └── test_api_integration.py  # API integration tests (Level 3)
+├── Dockerfile                   # Docker image definition (Level 3)
+├── docker-compose.yml           # Multi-service orchestration (Level 3)
 ├── dvc.yaml                     # DVC pipeline definition
 ├── requirements.txt             # Python dependencies
 ├── requirements-dev.txt         # Development dependencies
@@ -556,7 +714,6 @@ XGBClassifier(
 ## 📚 MLOps Concepts Demonstrated
 
 | Concept | Implementation |
-|---------|----------------|
 | **Data Versioning** | DVC tracks raw data, processed features, models |
 | **Reproducibility** | `dvc.yaml` defines exact pipeline stages |
 | **Automation** | GitHub Actions for scheduled retraining |
@@ -564,21 +721,51 @@ XGBClassifier(
 | **Clean Architecture** | Modular separation (data/features/models/eval) |
 | **Configuration Management** | Centralized `config.py` |
 | **Temporal Validation** | Train/test split preserves time order |
+| **Drift Detection** | Evidently AI for data/target drift monitoring |
+| **Alert System** | Discord webhooks for proactive notifications |
+| **Feature Store** | Feast for consistent feature serving |
+| **API Serving** | FastAPI for production predictions |
+| **Containerization** | Docker for easy deployment |
 
 ## 🗺️ Roadmap
 
-### Level 2: Monitoring (Next)
-- [ ] Integrate Evidently AI for data drift detection
-- [ ] Automated monitoring reports
-- [ ] Alert system (Discord webhooks)
-- [ ] Deployment gating based on drift score
+### ✅ Level 1: Core MLOps Pipeline (COMPLETE)
+- [x] Data ingestion from Yahoo Finance
+- [x] Feature engineering pipeline
+- [x] Model training (Logistic Regression, XGBoost)
+- [x] DVC for data/model versioning
+- [x] GitHub Actions for automated retraining
+- [x] Comprehensive data quality framework
+- [x] Production-grade testing suite
 
-### Level 3: Production Serving (Future)
-- [ ] Feast feature store for low-latency features
-- [ ] FastAPI REST API for predictions
-- [ ] Redis online feature cache
-- [ ] Docker + docker-compose deployment
-- [ ] Kubernetes manifests
+### ✅ Level 2: Monitoring & Drift Detection (COMPLETE)
+- [x] Evidently AI for drift detection
+- [x] Automated monitoring reports (HTML/JSON/Markdown)
+- [x] Alert system (Discord webhooks)
+- [x] Data quality monitoring
+- [x] Threshold-based alerting
+- [x] Professional MLOps workflow diagram
+
+### ✅ Level 3: Production Serving & Feature Store (COMPLETE)
+- [x] Feast feature store for low-latency features
+- [x] FastAPI REST API for predictions
+- [x] Ticker-based prediction endpoint
+- [x] SQLite/Redis online feature cache
+- [x] Docker + docker-compose deployment
+- [x] Comprehensive deployment documentation
+- [x] API integration tests
+
+### 🚀 Future Enhancements (Optional)
+- [ ] Kubernetes deployment manifests
+- [ ] Prometheus metrics & Grafana dashboards
+- [ ] API authentication (JWT/API keys)
+- [ ] Rate limiting & request queuing
+- [ ] Model A/B testing framework
+- [ ] Automated model retraining triggers
+- [ ] Multi-model serving
+- [ ] Real-time streaming predictions
+- [ ] Advanced feature engineering (deep learning embeddings)
+- [ ] Model explainability (SHAP/LIME)
 
 ## 🤝 Contributing
 

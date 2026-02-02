@@ -12,19 +12,65 @@ services:
     volumes:
       # Mount models volume for hot-reloading models without rebuilding
       - ./models:/app/models
+      # Mount data for Feast feature store
+      - ./data:/app/data
+      # Mount feature store
+      - ./feature_store:/app/feature_store
       # Mount logs
       - ./logs:/app/logs
     environment:
       - LOG_LEVEL=info
+      - FEAST_REDIS_HOST=redis
+      - FEAST_REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
     restart: unless-stopped
+    networks:
+      - stockflowml
 
-  # Placeholder for future services
-  # drift_monitor:
-  #   ...
-  # redis_feature_store:
-  #   ...
+  redis:
+    image: redis:7-alpine
+    container_name: stockflowml_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - stockflowml-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: stockflowml-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - stockflowml-network
+
+networks:
+  stockflowml-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

@@ -338,22 +338,34 @@ docker-compose logs -f api
 
 # Test API
 curl http://localhost:8000/health
+### Level 3: Production Serving & Dashboard
 
-# Stop services
-docker-compose down
-```
+**Start the complete stack (API + Redis + Frontend)**:
 
-**Test Integration:**
+**Backend (API + Redis)**:
 ```bash
-# Run API integration tests
-python tests/test_api_integration.py
+# Terminal 1: Start backend services
+docker-compose up
+
+# Or run API standalone
+python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Interactive API Documentation:**
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+**Frontend Dashboard**:
+```bash
+# Terminal 2: Start frontend
+cd frontend
+npm install
+npm run dev
 
+# Open browser
+# http://localhost:3000
+```
 
+**Access Dashboard**:
+- Main Dashboard: http://localhost:3000
+- API Docs: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
 
 ## 📁 Project Structure
 
@@ -746,11 +758,13 @@ XGBClassifier(
 - [x] Threshold-based alerting
 - [x] Professional MLOps workflow diagram
 
-### ✅ Level 3: Production Serving & Feature Store (COMPLETE)
-- [x] Feast feature store for low-latency features
-- [x] FastAPI REST API for predictions
-- [x] Ticker-based prediction endpoint
-- [x] SQLite/Redis online feature cache
+#### Level 3: Production Serving & Feature Store ✅ Implemented
+- FastAPI for production-grade REST API
+- Feast feature store for low-latency features (SQLite/Redis)
+- Real-time inference with ticker-based predictions
+- Docker deployment (API + Redis + Frontend)
+- **Next.js Dashboard**: Modern web UI with stock predictions, model status, and user controls
+- Comprehensive deployment documentation
 - [x] Docker + docker-compose deployment
 - [x] Comprehensive deployment documentation
 - [x] API integration tests

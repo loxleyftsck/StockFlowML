@@ -36,3 +36,7 @@ requests==2.31.0
 # Visualization (EDA only)
 matplotlib==3.8.2
 seaborn==0.13.0
+
+# Level 4: Monitoring & Explainability
+prometheus-client==0.19.0
+shap==0.44.0

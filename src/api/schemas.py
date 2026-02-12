@@ -50,8 +50,25 @@ class PredictionOutput(BaseModel):
     model_version: str = Field("unknown", description="Version of the model used")
     processing_time_ms: float = Field(..., description="Processing time in milliseconds")
 
+class TickerPredictionInput(BaseModel):
+    """
+    Input schema for ticker-based prediction.
+    Fetches features from Feast feature store.
+    """
+    ticker: str = Field(..., description="Stock ticker symbol (e.g., BBCA.JK)")
+    timestamp: Optional[datetime] = Field(None, description="Timestamp for feature retrieval (default: now)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "ticker": "BBCA.JK",
+                "timestamp": "2024-01-15T10:00:00"
+            }
+        }
+
 class HealthCheck(BaseModel):
     """Health check response schema."""
     status: str = "ok"
     version: str = "1.0.0"
     model_loaded: bool = False
+    feast_enabled: bool = False

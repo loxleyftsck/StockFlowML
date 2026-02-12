@@ -7,12 +7,13 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    Start_Command="python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000"
+    PYTHONPATH=/app
 
 # Install system dependencies (gcc required for some python packages)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for caching)
@@ -26,11 +27,18 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY src/ src/
 COPY models/ models/
 COPY data/processed/ data/processed/
-# Note: In production, models usually loaded from S3/DVC, not copied.
-# But for this Docker demo, we include local models.
+COPY feature_store/ feature_store/
+
+# Create necessary directories
+RUN mkdir -p logs data/processed
 
 # Expose port
 EXPOSE 8000
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+
 # Run application
 CMD ["python", "-m", "uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+

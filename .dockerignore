@@ -1,0 +1,33 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+reports/
+logs/
+temp/
+tmp/
+# Exclude raw data to save space (api only needs models or processed features)
+data/raw/
+data/fallback/
+# We include models/ and data/processed/ explicitly in Dockerfile or via volume

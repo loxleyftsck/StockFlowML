@@ -1,0 +1,203 @@
+name: CI - Development Branch
+
+on:
+  push:
+    branches:
+      - development
+  pull_request:
+    branches:
+      - development
+      - main
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ --cov=src --cov-report=xml --cov-report=html -v
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+  
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install linting tools
+        run: |
+          pip install --upgrade pip
+          pip install black flake8 isort mypy
+      
+      - name: Check code formatting (black)
+        run: |
+          black --check src/ tests/ scripts/
+      
+      - name: Check import sorting (isort)
+        run: |
+          isort --check-only src/ tests/ scripts/
+      
+      - name: Lint with flake8
+        run: |
+          flake8 src/ tests/ scripts/ --max-line-length=100 --extend-ignore=E203,W503
+      
+      - name: Type checking (mypy)
+        run: |
+          mypy src/ --ignore-missing-imports || echo "Type checking had warnings"
+  
+  validate-pipeline:
+    name: Validate ML Pipeline
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Initialize DVC
+        run: |
+          dvc remote add -d local_remote .dvc/cache
+          dvc config core.autostage true
+      
+      - name: Run quick validation
+        run: |
+          echo "Running quick pipeline validation..."
+          python -m pipelines.train_pipeline --model logistic
+      
+      - name: Validate metrics
+        run: |
+          echo "Checking if metrics file was generated..."
+          test -f reports/metrics.md && echo "✅ Metrics generated" || exit 1
+      
+      - name: Check data quality
+        run: |
+          echo "Running data quality checks..."
+          python scripts/generate_data_quality_report.py || echo "⚠️ Data quality check warning"
+      
+      - name: Upload pipeline artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pipeline-validation-artifacts
+          path: |
+            reports/metrics.md
+            reports/data_quality_report.md
+          retention-days: 7
+  
+  drift-check:
+    name: Drift Detection
+    runs-on: ubuntu-latest
+    needs: [validate-pipeline]
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run drift detection
+        run: |
+          echo "Checking for data drift..."
+          python scripts/generate_drift_report.py --ticker BBCA.JK --split 0.7 || echo "⚠️ Drift detected"
+      
+      - name: Upload drift reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: drift-reports
+          path: |
+            reports/drift_report.html
+            reports/drift_report.json
+            reports/drift_report.md
+          retention-days: 14
+      
+      - name: Comment drift status on PR
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const driftReport = fs.readFileSync('reports/drift_report.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 📊 Drift Detection Results\n\n' + driftReport
+            });
+  
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
